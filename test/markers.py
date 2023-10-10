@@ -19,6 +19,7 @@ import sys
 import pytest
 
 from evadb.utils.generic_utils import (
+    is_milvuslite_available,
     is_chromadb_available,
     is_forecast_available,
     is_gpu_available,
@@ -45,6 +46,11 @@ pinecone_skip_marker = pytest.mark.skipif(
 chromadb_skip_marker = pytest.mark.skipif(
     is_chromadb_available() is False,
     reason="Skipping since chromadb is not installed",
+)
+
+milvus_skip_marker = pytest.mark.skipif(
+    is_milvuslite_available() is False,
+    reason="Skipping since milvus is not installed",
 )
 
 windows_skip_marker = pytest.mark.skipif(
