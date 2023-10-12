@@ -23,16 +23,17 @@ from evadb.third_party.vector_stores.types import (
 from evadb.utils.generic_utils import try_to_import_milvuslite_client
 
 required_params = ["index_path"]
-
+_pymilvus_init_done = False
 vector_field_name = "vector_field"
 
 def get_milvuslite_client(index_path: str):
-    global _pymilvus_client_instance
-    if _pymilvus_client_instance is None:
+    
+    global _pymilvus_init_done
+    if not _pymilvus_init_done:
         try_to_import_milvuslite_client()
 
         from milvus import default_server   # noqa: F401
-        from pymilvus import connections, utility, Collection   # noqa: F401
+        from pymilvus import connections  # noqa: F401
            
         default_server.start()
         default_server.set_base_dir(index_path)
@@ -41,31 +42,52 @@ def get_milvuslite_client(index_path: str):
             connections.disconnect("default")
         
         connections.connect(host='localhost', port=default_server.listen_port)
+        _pymilvus_init_done = True
 
 
 class MilvusVectorStore(VectorStore):
     def __init__(self, index_name: str, index_path: str) -> None:
+
         get_milvuslite_client(index_path)
         self._collection_name = index_name
 
     def create(self, vector_dim: int):
+
         from pymilvus import (
-            FieldSchema, CollectionSchema, DataType,
+            FieldSchema, CollectionSchema, DataType, Collection, utility
         )
-        field1 = FieldSchema(name="id", dtype=DataType.INT64, description="int64", is_primary=True)
+
+        # if collection already exists, overwrite
+        if utility.has_collection(self._collection_name):
+            utility.drop_collection(
+                collection_name=self._collection_name
+            )
+
+        field1 = FieldSchema(name="id", dtype=DataType.VARCHAR, description="VARCHAR", is_primary=True, max_length=256)
         field2 = FieldSchema(name=vector_field_name, dtype=DataType.FLOAT_VECTOR, description="float vector", dim=vector_dim, is_primary=False)
-        schema = CollectionSchema(fields=[field1, field2], description="collection description")
+        schema = CollectionSchema(fields=[field1, field2], description="collection")
         collection = Collection(name=self._collection_name, data=None, schema=schema, properties={"collection.ttl.seconds": 15})
         self._client = collection
 
+    def persist(self):
+
+        from pymilvus import Collection
+
+        Collection("hello_milvus").flush()
+
     def add(self, payload: List[FeaturePayload]):
+
+        from pymilvus import Collection
+
         ids = [str(row.id) for row in payload]
         embeddings = [row.embedding.reshape(-1).tolist() for row in payload]
 
         Collection(self._collection_name).insert([ids, embeddings])
 
-
     def delete(self) -> None:
+
+        from pymilvus import utility
+
         utility.drop_collection(
             collection_name=self._collection_name
         )
@@ -75,6 +97,8 @@ class MilvusVectorStore(VectorStore):
         query: VectorIndexQuery,
     ) -> VectorIndexQueryResult:
         
+        from pymilvus import Collection
+
         # create index 
         index = {
             "index_type": "IVF_FLAT",
@@ -82,7 +106,7 @@ class MilvusVectorStore(VectorStore):
             "params": {"nlist": 128},
         }
 
-        Collection(self._collection_name).create_index("embeddings", index)
+        Collection(self._collection_name).create_index(vector_field_name, index)
 
         # load data into memory
         Collection(self._collection_name).load()
@@ -91,7 +115,7 @@ class MilvusVectorStore(VectorStore):
         search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
 
         response = Collection(self._collection_name).search(
-            data=query.embedding.reshape(-1).tolist(), 
+            data=[query.embedding.reshape(-1).tolist()], 
             anns_field=vector_field_name, 
             param=search_params, 
             limit=query.top_k,
