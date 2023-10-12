@@ -560,6 +560,17 @@ def try_to_import_chromadb_client():
             """Could not import chromadb python package.
                 Please install it with 'pip install chromadb`."""
         )
+    
+
+def try_to_import_milvuslite_client():
+    try:
+        import milvus   # noqa: F401
+        import pymilvus  # noqa: F401
+    except ImportError:
+        raise ValueError(
+            """Could not import pymilvus python package.
+                Please install it with 'pip install "milvus[client]"."""
+        )
 
 
 def is_qdrant_available() -> bool:
@@ -581,6 +592,14 @@ def is_pinecone_available() -> bool:
 def is_chromadb_available() -> bool:
     try:
         try_to_import_chromadb_client()
+        return True
+    except ValueError:  # noqa: E722
+        return False
+    
+
+def is_milvuslite_available() -> bool:
+    try:
+        try_to_import_milvuslite_client()
         return True
     except ValueError:  # noqa: E722
         return False

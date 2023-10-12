@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from evadb.catalog.catalog_type import VectorStoreType
+from evadb.third_party.vector_stores.milvus import MilvusVectorStore
 from evadb.third_party.vector_stores.chromadb import ChromaDBVectorStore
 from evadb.third_party.vector_stores.faiss import FaissVectorStore
 from evadb.third_party.vector_stores.pinecone import PineconeVectorStore
@@ -48,6 +49,12 @@ class VectorStoreFactory:
 
             validate_kwargs(kwargs, required_params, required_params)
             return ChromaDBVectorStore(index_name, **kwargs)
+        
+        elif vector_store_type == VectorStoreType.MILVUS:
+            from evadb.third_party.vector_stores.milvus import required_params
+
+            validate_kwargs(kwargs, required_params, required_params)
+            return MilvusVectorStore(index_name, **kwargs)
 
         else:
             raise Exception(f"Vector store {vector_store_type} not supported")

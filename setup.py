@@ -112,6 +112,8 @@ pinecone_libs = ["pinecone-client"]
 
 chromadb_libs = ["chromadb"]
 
+pymilvus_libs = ["pymilvus", "milvus"]
+
 postgres_libs = [
     "psycopg2",
 ]
@@ -162,6 +164,7 @@ EXTRA_REQUIRES = {
     "qdrant": qdrant_libs,
     "pinecone": pinecone_libs,
     "chromadb": chromadb_libs,
+    "pymilvus": pymilvus_libs,
     "postgres": postgres_libs,
     "ludwig": ludwig_libs,
     "sklearn": sklearn_libs,
