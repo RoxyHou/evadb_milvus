@@ -27,7 +27,7 @@ _pymilvus_init_done = False
 vector_field_name = "vector_field"
 
 def get_milvuslite_client(index_path: str):
-    
+
     global _pymilvus_init_done
     if not _pymilvus_init_done:
         try_to_import_milvuslite_client()
@@ -98,12 +98,13 @@ class MilvusVectorStore(VectorStore):
     ) -> VectorIndexQueryResult:
         
         from pymilvus import Collection
+        import time 
 
         # create index 
         index = {
             "index_type": "IVF_FLAT",
             "metric_type": "L2",
-            "params": {"nlist": 128},
+            "params": {"nlist": 24},
         }
 
         Collection(self._collection_name).create_index(vector_field_name, index)
@@ -112,14 +113,17 @@ class MilvusVectorStore(VectorStore):
         Collection(self._collection_name).load()
 
         # search
-        search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
+        search_params = {"metric_type": "L2", "params": {"nprobe": 4}}
 
+        start_time = time.time()
         response = Collection(self._collection_name).search(
             data=[query.embedding.reshape(-1).tolist()], 
             anns_field=vector_field_name, 
             param=search_params, 
             limit=query.top_k,
         )
+        end_time = time.time()
+        print("search latency = {:.4f}s".format(end_time - start_time))
 
         distances, ids = [], []
         for hit in response[0]:
